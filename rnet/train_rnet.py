@@ -13,16 +13,16 @@ import pcn
 
 def main():
     with torch.cuda.device(DEVICE_IDS[0]):
-        p_model = _model_init()
+        r_model = _model_init()
         #----data loader----
-        train_loader = get_dataset(files_vec=['pos_12.txt', 'neg_12.txt', 'suspect_12.txt'])
+        train_loader = get_dataset(files_vec=['pos_24.txt', 'neg_24.txt', 'suspect_24.txt'])
         train_iter = iter(train_loader)
         #----data iter-----
         check_dir(SNAPSHOT_PATH)
 
         #----get parameters that need back-propagation
         params = []
-        for p in list(p_model.parameters()):
+        for p in list(r_model.parameters()):
             if p.requires_grad == False: continue
             params.append(p)
 
@@ -55,8 +55,8 @@ def main():
             _angle_labels = _angle_labels.cuda(DEVICE_IDS[0])
             _angle_labels_var = Variable(_angle_labels)
 
-            fc5, fc6, bbox_reg = p_model(_images) #----model forward 
-            loss_cls, loss_angle, loss_bbox = p_model.get_loss(fc5, fc6, bbox_reg,\
+            fc5, fc6, bbox_reg = r_model(_images) #----model forward 
+            loss_cls, loss_angle, loss_bbox = r_model.get_loss(fc5, fc6, bbox_reg,\
                                                  _labels_var, _angle_labels_var, _bbox)
 
             loss = 0
@@ -86,7 +86,7 @@ def main():
                         " loss_bbox:%.4e" % loss_bbox_avg.avg, " loss_angle:%.4e" % loss_angle_avg.avg, " accuracy:%.4e" % acc1.avg)
 
                 save_name = '_'.join([SUFFIX, "iter", str(i), '.model'])                
-                torch.save(p_model, os.path.join(SNAPSHOT_PATH, save_name))
+                torch.save(r_model, os.path.join(SNAPSHOT_PATH, save_name))
 
                 loss_avg = AverageMeter()
                 loss_cls_avg = AverageMeter()
@@ -103,11 +103,11 @@ def get_dataset(files_vec=None, images_vec=None):
 
      
 def _model_init():
-    p_model = pcn.Pnet()
-    #p_model.apply(weight_init)
-    p_model.cuda(DEVICE_IDS[0])
-    p_model.train()
-    return p_model
+    r_model = pcn.Rnet()
+    #r_model.apply(weight_init)
+    r_model.cuda(DEVICE_IDS[0])
+    r_model.train()
+    return r_model
 
 
 class AverageMeter(object):
@@ -128,7 +128,7 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 def accuracy(output, target):
-    output = output[:,:,0,0] #---[batch_size, 1, 1, 1] ---> [batch_size, 1] 
+    #output = output[:,:,0,0] #---[batch_size, 1, 1, 1] ---> [batch_size, 1] 
     batch_size = output.size(0)
     target = target.long() 
     output = (output >= 0.5).type_as(target)
