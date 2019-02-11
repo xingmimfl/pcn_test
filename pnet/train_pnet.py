@@ -65,7 +65,7 @@ def main():
                 loss_cls_avg.update(loss_cls.data[0], BATCH_SIZE)
                 
             if loss_bbox is not None:
-                loss += loss_cls
+                loss += loss_bbox
                 loss_bbox_avg.update(loss_bbox.data[0], BATCH_SIZE)
 
             if loss_angle is not None:
@@ -128,7 +128,13 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 def accuracy(output, target):
+    index1 = torch.eq(target, 0)
+    index2 = torch.eq(target, 1)
+    index = (index1 | index2).nonzero()[:,0]
+    
     output = output[:,:,0,0] #---[batch_size, 1, 1, 1] ---> [batch_size, 1] 
+    output = torch.index_select(output, 0, index)
+    target = torch.index_select(target, 0, index)
     batch_size = output.size(0)
     target = target.long() 
     output = (output >= 0.5).type_as(target)

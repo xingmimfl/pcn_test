@@ -24,17 +24,19 @@ class Pnet(nn.Module):
             nn.PReLU(),            
         )
         self.fc5_1 = nn.Conv2d(in_channels=128, out_channels=1, kernel_size=1, stride=1, padding=0, bias=True)
-        self.fc6_1 = nn.Conv2d(in_channels=128, out_channels=3, kernel_size=1, stride=1, padding=0, bias=True)
+        self.fc6_1 = nn.Conv2d(in_channels=128, out_channels=1, kernel_size=1, stride=1, padding=0, bias=True)
         self.bbox_reg_1 = nn.Conv2d(in_channels=128, out_channels=4, kernel_size=1, stride=1, padding=0, bias=True)
         
-        self.cls_func = nn.BCEWithLogitsLoss()
-        self.angle_func = nn.BCEWithLogitsLoss()
+        self.cls_func = nn.BCELoss()
+        self.angle_func = nn.BCELoss()
         self.bbox_func = nn.MSELoss()
 
     def forward(self, x):
         x = self.basenet(x)
         fc5 = self.fc5_1(x)
+        fc5 = F.sigmoid(fc5)
         fc6 = self.fc6_1(x)
+        fc6 = F.sigmoid(fc6)
         bbox_reg = self.bbox_reg_1(x) 
         return fc5, fc6, bbox_reg
 
@@ -72,7 +74,7 @@ class Pnet(nn.Module):
         if angle_index.numel():
             angle_index = angle_index[:, 0]
             angle_labels_select = torch.index_select(angle_labels, 0, angle_index).float()
-            angle_labels_select = torch.squeeze(angle_labels_select)
+            #angle_labels_select = torch.squeeze(angle_labels_select)
             fc6_select = torch.index_select(fc6, 0, angle_index) 
             loss_angle = self.angle_func(fc6_select, angle_labels_select)
 

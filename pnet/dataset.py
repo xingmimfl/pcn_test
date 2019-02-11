@@ -71,8 +71,8 @@ class ImageSets(Dataset):
 
         image = torch.from_numpy(image).float()
         a_bbox = torch.from_numpy(a_bbox).float() #---turn into tensor
-        a_label = torch.from_numpy(a_label).int()
-        a_angle_label = torch.from_numpy(a_angle_label).int()
+        a_label = torch.from_numpy(a_label).long()
+        a_angle_label = torch.from_numpy(a_angle_label).long()
         return image, a_bbox, a_label, a_angle_label, a_image_path
 
 def detection_collate(batch):

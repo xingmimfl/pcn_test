@@ -65,7 +65,7 @@ def main():
                 loss_cls_avg.update(loss_cls.data[0], BATCH_SIZE)
                 
             if loss_bbox is not None:
-                loss += loss_cls
+                loss += loss_bbox
                 loss_bbox_avg.update(loss_bbox.data[0], BATCH_SIZE)
 
             if loss_angle is not None:
