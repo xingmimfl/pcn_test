@@ -62,7 +62,7 @@ class ImageSets(Dataset):
         image = cv2.imread(a_image_path) #----be caution, we just consider jpg here
         a_bbox = np.asarray(a_bbox) #---turn bbox into numpy array
         a_label = np.asarray(a_label)  #----turn label into numpy array
-        a_angle_label = np.asarray(a_angle_label) #---turn angle label into numpy array
+        a_angle_label = np.asarray(a_angle_label) / 45.0 #---turn angle label into numpy array
 
         if self.isTrain:
             image, a_bbox, a_label = self.augment(image, a_bbox, a_label)   

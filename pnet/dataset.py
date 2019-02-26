@@ -13,7 +13,7 @@ from config import *
 #---a better augment is https://github.com/amdegroot/ssd.pytorch/blob/master/utils/augmentations.py
 
 class ImageSets(Dataset):
-    def __init__(self, isTrain=True, data_path=DATA_PATH, imageSize=12, 
+    def __init__(self, isTrain=True, data_path=DATA_PATH, imageSize=24, 
             files_vec = None, images_vec = None):
         """
         files_vec = [pos_12.txt, neg_12.txt, part_12.txt]
@@ -71,8 +71,8 @@ class ImageSets(Dataset):
 
         image = torch.from_numpy(image).float()
         a_bbox = torch.from_numpy(a_bbox).float() #---turn into tensor
-        a_label = torch.from_numpy(a_label).long()
-        a_angle_label = torch.from_numpy(a_angle_label).long()
+        a_label = torch.from_numpy(a_label).int()
+        a_angle_label = torch.from_numpy(a_angle_label).int()
         return image, a_bbox, a_label, a_angle_label, a_image_path
 
 def detection_collate(batch):

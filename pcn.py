@@ -21,7 +21,7 @@ class Pnet(nn.Module):
             nn.ReLU(inplace=True),
 
             nn.Conv2d(in_channels=64, out_channels=128, kernel_size=2, stride=1, padding=0,  bias=True),
-            nn.PReLU(),            
+            nn.ReLU(),            
         )
         self.fc5_1 = nn.Conv2d(in_channels=128, out_channels=1, kernel_size=1, stride=1, padding=0, bias=True)
         self.fc6_1 = nn.Conv2d(in_channels=128, out_channels=1, kernel_size=1, stride=1, padding=0, bias=True)
@@ -266,10 +266,9 @@ class Onet(nn.Module):
 
 if __name__=="__main__":
     #x = torch.rand((64, 3, 24, 24))
-    x = torch.rand((64, 3, 48, 48))
+    x = torch.rand((64, 3, 100, 100))
     x = Variable(x)
-    #pnet = Pnet()
-    net = Onet()
+    net = Pnet()
     fc5, fc6, bbox_reg = net(x)
     print("fc5.size:\t", fc5.size())
     print("fc6.size:\t", fc6.size())

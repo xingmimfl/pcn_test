@@ -15,7 +15,8 @@ def main():
     with torch.cuda.device(DEVICE_IDS[0]):
         r_model = _model_init()
         #----data loader----
-        train_loader = get_dataset(files_vec=['pos_24.txt', 'neg_24.txt', 'suspect_24.txt'])
+        #train_loader = get_dataset(files_vec=['pos_24.txt', 'neg_24.txt', 'suspect_24.txt'])
+        train_loader = get_dataset(files_vec=['pos_24.txt', 'neg_24.txt', 'suspect_24.txt', 'pos_pnet_24.txt', 'suspect_pnet_24.txt','neg_pnet_24.txt'])
         train_iter = iter(train_loader)
         #----data iter-----
         check_dir(SNAPSHOT_PATH)

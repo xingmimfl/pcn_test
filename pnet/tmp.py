@@ -4,6 +4,6 @@ import torch
 sys.path.append("..")
 import pcn
 
-model_path = "model_pnet_190209/pnet_190209_iter_1495000_.model"
+model_path = "model_pnet_190219/pnet_190219_iter_1999000_.model"
 model = torch.load(model_path)
-torch.save(model.state_dict(), "pnet_190209_iter_1495000_.pth")
+torch.save(model.state_dict(), "pnet_190219_iter_1999000_.pth")
