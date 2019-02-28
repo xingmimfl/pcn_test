@@ -33,7 +33,7 @@ class ImageSets(Dataset):
                 array = a_line.split()
                 a_image_path = array[0]
                 a_label = [int(float(array[1]))]
-                a_angle_label = [float(array[2]) / 45.0]
+                a_angle_label = [float(array[2])]
                 a_box = [float(x) for x in array[3:]]
 
                 images_path_vec.append(a_image_path)
@@ -62,8 +62,7 @@ class ImageSets(Dataset):
         image = cv2.imread(a_image_path) #----be caution, we just consider jpg here
         a_bbox = np.asarray(a_bbox) #---turn bbox into numpy array
         a_label = np.asarray(a_label)  #----turn label into numpy array
-        a_angle_label = np.asarray(a_angle_label) / 45.0 #---turn angle label into numpy array
-
+        a_angle_label = np.asarray(a_angle_label) #---turn angle label into numpy array
         if self.isTrain:
             image, a_bbox, a_label = self.augment(image, a_bbox, a_label)   
 
@@ -72,7 +71,7 @@ class ImageSets(Dataset):
         image = torch.from_numpy(image).float()
         a_bbox = torch.from_numpy(a_bbox).float() #---turn into tensor
         a_label = torch.from_numpy(a_label).int()
-        a_angle_label = torch.from_numpy(a_angle_label).float()
+        a_angle_label = torch.from_numpy(a_angle_label).float() / 45.0
         return image, a_bbox, a_label, a_angle_label, a_image_path
 
 def detection_collate(batch):

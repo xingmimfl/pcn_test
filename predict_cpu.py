@@ -15,8 +15,8 @@ if __name__=="__main__":
     #image_name = "images/25.jpg"
     #image_name = "images/5.jpg"
     #image_name = "images/juzhao3.jpeg"
-    #image_name = "images/daozhi.jpg"
-    image_name = "images/yueyu.jpg"
+    image_name = "images/9.jpg"
+    #image_name = "images/30.jpg"
     pnet = pcn.Pnet()
     pnet.load_state_dict(torch.load("pnet/pnet_190219_iter_1999000_.pth", map_location=lambda storage, loc: storage))
     pnet.eval()
@@ -26,7 +26,7 @@ if __name__=="__main__":
     rnet.eval()
 
     onet = pcn.Onet()
-    onet.load_state_dict(torch.load("onet/onet_190209_iter_1495000_.pth", map_location=lambda storage, loc: storage))
+    onet.load_state_dict(torch.load("onet/onet_190227_iter_1499000_.pth", map_location=lambda storage, loc: storage))
     onet.eval()
 
     print("---------finishing loading models---------")
@@ -63,7 +63,6 @@ if __name__=="__main__":
     for i in range(len(rectangles)):
         a_rect = rectangles[i]
         x1, y1, x2, y2, conf, score_conf = a_rect
-        #print(score_conf)
         x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
         if abs(score_conf) < EPS: #---人脸向上
             crop_image = img[y1:y2, x1:x2]
@@ -72,8 +71,8 @@ if __name__=="__main__":
             y2 = img_height - 1 - y1
             y1 = img_height - 1 - tmp
             crop_image = img180[y1:y2, x1:x2]
-        #cv2.imwrite("rnet_input_"+str(count) + "_" + str(score_conf) + ".jpg", crop_image) 
-        #count += 1
+        cv2.imwrite("rnet_input_"+str(count) + "_" + str(score_conf) + ".jpg", crop_image) 
+        count += 1
         crop_image = cv2.resize(crop_image, (24, 24)) / 255.0
         crop_image = crop_image.transpose((2, 0, 1))
         crop_image = torch.from_numpy(crop_image.copy())
@@ -109,7 +108,7 @@ if __name__=="__main__":
         else:
             crop_image = img180[height-1-y2:height-1-y1, x1:x2]  
 
-        cv2.imwrite("onet_input_"+str(count) + ".jpg", crop_image) 
+        cv2.imwrite("onet_input_"+str(count) + "_" + str(rotate_angle) + ".jpg", crop_image) 
         count += 1
         
         crop_image = cv2.resize(crop_image, (48, 48))/255.0

@@ -219,6 +219,9 @@ class Onet(nn.Module):
 
     #def get_loss(self, fc6_cls, rotate_reg, bbox_reg, cls_labels, angle_labels, bbox_labels):
     def get_loss(self, fc5, fc6, bbox_reg, cls_labels, angle_labels, bbox_labels):
+        #print(angle_labels)
+        #print(cls_labels)
+        #print(bbox_labels)
         #fc5: classifcation labels
         #fc6: angle regression
         if len(fc5.size()) == 4:
@@ -248,9 +251,9 @@ class Onet(nn.Module):
 
         if bbox_index.numel() > 0:
             bbox_index = bbox_index[:, 0]
-            bbox_select = torch.index_select(bbox_labels, 0, bbox_index)
+            bbox_labels_select = torch.index_select(bbox_labels, 0, bbox_index)
             bbox_reg_select = torch.index_select(bbox_reg, 0, bbox_index)
-            loss_bbox = self.bbox_func(bbox_reg_select, bbox_select)
+            loss_bbox = self.bbox_func(bbox_reg_select, bbox_labels_select)
 
         #------calibration loss---
         angle_mask = (positive_mask | suspect_mask)

@@ -264,18 +264,15 @@ def filter_face_onet(cls_prob, rotate_reg, bbox_reg, rectangles, img, img180, im
     if index_positive_90.numel()>0:
         index_positive_90 = index_positive_90[:, 0] 
         rectangle_tmp = torch.index_select(rectangles, 0, index_positive_90)
-        rectangle_tmp = rectangle_tmp[:,[1, 0, 3, 2, 4,5]]
-        #rectangle_tmp[:, 0], rectangle_tmp[:,1] = rectangle_tmp[:,1], rectangle_tmp[:,0]  
-        #rectangle_tmp[:, 2], rectangle_tmp[:,3] = rectangle_tmp[:,3], rectangle_tmp[:,2]
+        rectangle_tmp = rectangle_tmp[:,[1, 0, 3, 2, 4, 5]]
         rectangles[index_positive_90] = rectangle_tmp
     
     if index_negative_90.numel() > 0:
-        height, width, _ = img.shape
         index_negative_90 = index_negative_90[:, 0]
         rectangle_tmp = torch.index_select(rectangles, 0, index_negative_90) 
-        rectangle_tmp = rectangle_tmp[:, [3, 0, 1, 2, 4, 5]]
-        rectangle_tmp[:, 0] = width - 1 - rectangle_tmp[:, 0]
-        rectangle_tmp[:, 3] = width - 1 - rectangle_tmp[:, 0] 
+        rectangle_tmp = rectangle_tmp[:, [1, 2, 3, 0, 4, 5]]
+        rectangle_tmp[:, 1] = width - 1 - rectangle_tmp[:, 1]
+        rectangle_tmp[:, 3] = width - 1 - rectangle_tmp[:, 3] 
         rectangles[index_negative_90] = rectangle_tmp
 
     #if index_0.numel()>0:
@@ -308,7 +305,9 @@ def filter_face_onet(cls_prob, rotate_reg, bbox_reg, rectangles, img, img180, im
     if index_negative_90.numel()>0:
         rectangle_tmp = torch.index_select(rectangles, 0, index_negative_90)
         rectangle_tmp = rectangle_tmp[:, [3, 0, 1, 2, 4, 5]] 
-        rectangle_tmp[:, 5] = -90 + rectangle_tmp[:, 5]
+        rectangle_tmp[:, 0] = width - 1 - rectangle_tmp[:, 0]
+        rectangle_tmp[:, 2] = width - 1 - rectangle_tmp[:, 2]
+        rectangle_tmp[:, 5] = 90 + rectangle_tmp[:, 5]
         rectangles[index_negative_90] = rectangle_tmp
  
     

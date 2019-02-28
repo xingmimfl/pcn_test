@@ -65,6 +65,7 @@ def main():
                 loss_cls_avg.update(loss_cls.data[0], BATCH_SIZE)
                 
             if loss_bbox is not None:
+                #print(loss_bbox)
                 loss += loss_bbox
                 loss_bbox_avg.update(loss_bbox.data[0], BATCH_SIZE)
 
@@ -129,6 +130,12 @@ class AverageMeter(object):
 
 def accuracy(output, target):
     #output = output[:,:,0,0] #---[batch_size, 1, 1, 1] ---> [batch_size, 1] 
+    index1 = torch.eq(target, 0)
+    index2 = torch.eq(target, 1)
+    index = (index1 | index2).nonzero()[:, 0]
+
+    output = torch.index_select(output, 0, index)
+    target = torch.index_select(target, 0, index)
     batch_size = output.size(0)
     target = target.long() 
     output = (output >= 0.5).type_as(target)

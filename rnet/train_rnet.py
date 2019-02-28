@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
 from torch.autograd import Variable
+import torch.nn.functional as F
 sys.path.append("..")
 from config import *
 import dataset
@@ -36,6 +37,7 @@ def main():
         loss_bbox_avg = AverageMeter()
         loss_angle_avg = AverageMeter()
         acc1 = AverageMeter()
+        angle_acc = AverageMeter()
 
         for i in range(MAX_ITERS):
             scheduler.step() 
@@ -76,6 +78,9 @@ def main():
             prec1 =  accuracy(fc5.data, _labels) 
             acc1.update(prec1)
 
+            angle_prec = angle_accuracy(fc5.data, _angle_labels)
+            angle_acc.update(angle_prec) 
+            
             loss_avg.update(loss.data[0], BATCH_SIZE)
 
             optimizer.zero_grad()
@@ -84,7 +89,7 @@ def main():
 
             if (i >=TRAIN_OUT_ITER)  and (i % TRAIN_OUT_ITER == 0):  # print every 2000 mini-batches
                 print("iter:%5d " % i, " loss:%.4e" % loss_avg.avg, " loss_cls:%.4e" % loss_cls_avg.avg, 
-                        " loss_bbox:%.4e" % loss_bbox_avg.avg, " loss_angle:%.4e" % loss_angle_avg.avg, " accuracy:%.4e" % acc1.avg)
+                        " loss_bbox:%.4e" % loss_bbox_avg.avg, " loss_angle:%.4e" % loss_angle_avg.avg, " accuracy:%.4e" % acc1.avg, " angle_accuracy:%4e" % angle_acc.avg)
 
                 save_name = '_'.join([SUFFIX, "iter", str(i), '.model'])                
                 torch.save(r_model, os.path.join(SNAPSHOT_PATH, save_name))
@@ -130,11 +135,24 @@ class AverageMeter(object):
 
 def accuracy(output, target):
     #output = output[:,:,0,0] #---[batch_size, 1, 1, 1] ---> [batch_size, 1] 
-    batch_size = output.size(0)
-    target = target.long() 
-    output = (output >= 0.5).type_as(target)
-    correct = output.eq(target)
-    res = correct.sum() * 100.0 / batch_size 
+    index1 = torch.eq(target, 0)
+    index2 = torch.eq(target, 1)
+    index = (index1 | index2).nonzero()[:, 0]
+
+    select_output = torch.index_select(output, 0, index)
+    select_target = torch.index_select(target, 0, index)
+    batch_size = select_output.size(0)
+    select_target = select_target.long()
+    select_output = (select_output >= 0.5).type_as(select_target)
+    correct = select_output.eq(select_target)
+    res = correct.sum() * 100.0 / batch_size
+    return res
+
+def angle_accuracy(output, labels):
+    batch_size = labels.size(0)
+    output = F.softmax(output)
+    correct = output.eq(output) 
+    res = correct.sum() * 100.0 / batch_size
     return res
 
 if __name__=="__main__":
