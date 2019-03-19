@@ -108,12 +108,12 @@ def detect_face_pnet(img, imgPad, net, thres, device_id=0):
         indexes = prob_mask.nonzero().float()
         if indexes.numel() > 0:
             bb1 = torch.round((stride * indexes + 0) * curScale) #--[x1, y1]
-            bb2 = torch.round((stride * indexes + 16) * curScale) #--[x2, y2]
+            bb2 = torch.round((stride * indexes + 24) * curScale) #--[x2, y2]
             boundingbox = torch.cat([bb1, bb2], dim=1)
             dx1, dy1, dx2, dy2 = bbox_reg[0][prob_mask], bbox_reg[1][prob_mask], bbox_reg[2][prob_mask], bbox_reg[3][prob_mask]
             offset = torch.stack([dx1, dy1, dx2, dy2], dim=1)
 
-            boundingbox = boundingbox + offset * 16.0 * curScale
+            boundingbox = boundingbox + offset * 24.0 * curScale
             #boundingbox[:, 0::2] = boundingbox[:, 0::2] + delta_col
             #boundingbox[:, 1::2] = boundingbox[:, 1::2] + delta_row
             score = prob[prob_mask].unsqueeze(1)
@@ -127,8 +127,8 @@ def detect_face_pnet(img, imgPad, net, thres, device_id=0):
             rectangles = rect2square(rectangles) #---turn into square
 
             rectangles[:, :2] = torch.clamp(rectangles[:, :2], min=0)
-            rectangles[:, 2] = torch.clamp(rectangles[:, 2], max=img_cols)
-            rectangles[:, 3] = torch.clamp(rectangles[:, 3], max=img_rows)
+            rectangles[:, 2] = torch.clamp(rectangles[:, 2], max=img_cols-1)
+            rectangles[:, 3] = torch.clamp(rectangles[:, 3], max=img_rows-1)
 
             index1 = (rectangles[:, 2] > rectangles[:, 0] + 12) #---x2 > x1
             index2 = (rectangles[:, 3] > rectangles[:, 1] + 12) #---y2 > y1
@@ -172,6 +172,8 @@ def filter_face_rnet(prob, angle_prob, bbox_reg, rectangles, img, img180, thresh
     indexes = binary_tensor.nonzero()[:,0]
     if indexes.numel() < 0: return []
     angle_max_index = torch.index_select(angle_max_index, 0, indexes) #---find positive samples
+    print("angle_max_index")
+    print(angle_max_index)
     rectangles = torch.index_select(rectangles, 0, indexes) #----select rectangles of positive samples
     rectangles[:, 4] = torch.index_select(prob, 0, indexes) #----replace classification score
 
@@ -201,7 +203,7 @@ def filter_face_rnet(prob, angle_prob, bbox_reg, rectangles, img, img180, thresh
             rectangles_down_tmp[:, 5] = 180.0
             rectangles_down[angle_max_index_down_1] = rectangles_down_tmp            
 
-        rectangles_down[:, 1], rectangles_down[:, 3] = height - 1 - rectangles_down[:, 3], height-1 - rectangles_down[:, 1] #---img180中的坐标
+        rectangles_down[:, 1], rectangles_down[:, 3] = height - 1 - rectangles_down[:, 3], height -1 - rectangles_down[:, 1] #---img180中的坐标
         rectangles[face_down_index] = rectangles_down
      
     #-----deal [x1, y1, x2, y2]------
@@ -221,8 +223,8 @@ def filter_face_rnet(prob, angle_prob, bbox_reg, rectangles, img, img180, thresh
 
     #----legal judgement-----
     rectangles[:, :2] = torch.clamp(rectangles[:, :2], min=0)
-    rectangles[:, 2] = torch.clamp(rectangles[:, 2], max=width)
-    rectangles[:, 3] = torch.clamp(rectangles[:, 3], max=height)
+    rectangles[:, 2] = torch.clamp(rectangles[:, 2], max=width-1)
+    rectangles[:, 3] = torch.clamp(rectangles[:, 3], max=height-1)
 
     index1 = (rectangles[:, 2] > rectangles[:, 0]) #---x2 > x1
     index2 = (rectangles[:, 3] > rectangles[:, 1]) #---y2 > y1
@@ -238,9 +240,12 @@ def filter_face_onet(cls_prob, rotate_reg, bbox_reg, rectangles, img, img180, im
     bbox_reg.size: [N, 4]
     """
     height, width, _ = img.shape
-
+    print("cls_prob")
+    print(cls_prob)
     cls_prob = F.sigmoid(cls_prob).data
-    rotate_reg = rotate_reg.data * 45
+    #print("cls_prob")
+    #print(cls_prob)
+    rotate_reg = rotate_reg.data * -45
     bbox_reg = bbox_reg.data
     
     binary_tensor = (cls_prob>=threshold)
@@ -249,6 +254,7 @@ def filter_face_onet(cls_prob, rotate_reg, bbox_reg, rectangles, img, img180, im
     rectangles = torch.index_select(rectangles, 0, indexes)
     rectangles[:, 4] = torch.index_select(cls_prob, 0, indexes) #--replace score
     rotate_reg = torch.index_select(rotate_reg, 0, indexes)
+    print(rectangles)
 
     index_180 = torch.eq(rectangles[:, 5], 180).nonzero()
     index_negative_90 = torch.eq(rectangles[:, 5], -90).nonzero()
@@ -264,7 +270,7 @@ def filter_face_onet(cls_prob, rotate_reg, bbox_reg, rectangles, img, img180, im
     if index_positive_90.numel()>0:
         index_positive_90 = index_positive_90[:, 0] 
         rectangle_tmp = torch.index_select(rectangles, 0, index_positive_90)
-        rectangle_tmp = rectangle_tmp[:,[1, 0, 3, 2, 4, 5]]
+        rectangle_tmp = rectangle_tmp[:, [1, 0, 3, 2, 4, 5]]
         rectangles[index_positive_90] = rectangle_tmp
     
     if index_negative_90.numel() > 0:
@@ -291,15 +297,18 @@ def filter_face_onet(cls_prob, rotate_reg, bbox_reg, rectangles, img, img180, im
 
     #---现在换算到原来的空间-----
     if index_180.numel()>0:
+        print("CCCCCCCCCCCCCCCCC")
         rectangle_tmp = torch.index_select(rectangles, 0, index_180)
         rectangle_tmp[:, 1], rectangle_tmp[:, 3] = height - 1 - rectangle_tmp[:, 3], height-1- rectangle_tmp[:, 1]
         rectangle_tmp[:, 5] = 180 - rectangle_tmp[:, 5]
+        #rectangle_tmp[:, 5] = -(180 - rectangle_tmp[:, 5])
         rectangles[index_180] = rectangle_tmp
 
     if index_positive_90.numel()>0:
         rectangle_tmp = torch.index_select(rectangles, 0, index_positive_90)
         rectangle_tmp = rectangle_tmp[:,[1, 0, 3, 2, 4, 5]]
-        rectangle_tmp[:, 5] = 90 - rectangle_tmp[:, 5]
+        rectangle_tmp[:, 5] =  90 - rectangle_tmp[:, 5]
+        #rectangle_tmp[:, 5] =  -(90 - rectangle_tmp[:, 5])
         rectangles[index_positive_90] = rectangle_tmp
       
     if index_negative_90.numel()>0:
@@ -307,7 +316,8 @@ def filter_face_onet(cls_prob, rotate_reg, bbox_reg, rectangles, img, img180, im
         rectangle_tmp = rectangle_tmp[:, [3, 0, 1, 2, 4, 5]] 
         rectangle_tmp[:, 0] = width - 1 - rectangle_tmp[:, 0]
         rectangle_tmp[:, 2] = width - 1 - rectangle_tmp[:, 2]
-        rectangle_tmp[:, 5] = 90 + rectangle_tmp[:, 5]
+        rectangle_tmp[:, 5] = -90 + rectangle_tmp[:, 5]
+        #rectangle_tmp[:, 5] = -(-90 + rectangle_tmp[:, 5])
         rectangles[index_negative_90] = rectangle_tmp
  
     

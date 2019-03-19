@@ -129,6 +129,8 @@ class Rnet(nn.Module):
         return fc5_2, fc6_2, bbox_reg
 
     def get_loss(self, fc5, fc6, bbox_reg, cls_labels, angle_labels, bbox_labels):
+        #print(cls_labels)
+        #print(angle_labels)
         if len(fc5.size()) == 4:
             fc5 = fc5[:, :, 0, 0]
         if len(fc6.size()) == 4:
@@ -159,6 +161,7 @@ class Rnet(nn.Module):
         if angle_index.numel():
             angle_index = angle_index[:, 0]
             angle_labels_select = torch.index_select(angle_labels, 0, angle_index).squeeze()
+            #print(angle_labels_select)
             fc6_select = torch.index_select(fc6, 0, angle_index)
             loss_angle = self.angle_func(fc6_select, angle_labels_select)
 
@@ -169,9 +172,10 @@ class Rnet(nn.Module):
 
         if bbox_index.numel() > 0:
             bbox_index = bbox_index[:, 0]
-            bbox_select = torch.index_select(bbox_labels, 0, bbox_index)
+            bbox_labels_select = torch.index_select(bbox_labels, 0, bbox_index)
+            #print(bbox_labels_select)
             bbox_reg_select = torch.index_select(bbox_reg, 0, bbox_index)
-            loss_bbox = self.bbox_func(bbox_reg_select, bbox_select)
+            loss_bbox = self.bbox_func(bbox_reg_select, bbox_labels_select)
         
         return loss_cls, loss_angle, loss_bbox
 

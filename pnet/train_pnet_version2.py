@@ -7,22 +7,25 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
 from torch.autograd import Variable
 sys.path.append("..")
-from config import *
+from config_version2 import *
 import dataset
 import pcn
 
 def main():
     with torch.cuda.device(DEVICE_IDS[0]):
-        o_model = _model_init()
+        p_model = _model_init()
         #----data loader----
-        train_loader = get_dataset(files_vec=['pos_pnet_48.txt', 'neg_pnet_48.txt', 'suspect_pnet_48.txt'])
+        #train_loader = get_dataset(files_vec=['pos_12.txt', 'pos_hardmining_12.txt',
+        #    'neg_12.txt', 'neg_hardmining_12.txt',
+        #    'suspect_12.txt', 'suspect_hardmining_12.txt'])
+        train_loader = get_dataset(files_vec=['pos_12_new.txt',  'neg_12_combine.txt', 'suspect_12_new.txt'])
         train_iter = iter(train_loader)
         #----data iter-----
         check_dir(SNAPSHOT_PATH)
 
         #----get parameters that need back-propagation
         params = []
-        for p in list(o_model.parameters()):
+        for p in list(p_model.parameters()):
             if p.requires_grad == False: continue
             params.append(p)
 
@@ -55,8 +58,8 @@ def main():
             _angle_labels = _angle_labels.cuda(DEVICE_IDS[0])
             _angle_labels_var = Variable(_angle_labels)
 
-            fc5, fc6, bbox_reg = o_model(_images) #----model forward 
-            loss_cls, loss_angle, loss_bbox = o_model.get_loss(fc5, fc6, bbox_reg,\
+            fc5, fc6, bbox_reg = p_model(_images) #----model forward 
+            loss_cls, loss_angle, loss_bbox = p_model.get_loss(fc5, fc6, bbox_reg,\
                                                  _labels_var, _angle_labels_var, _bbox)
 
             loss = 0
@@ -65,7 +68,6 @@ def main():
                 loss_cls_avg.update(loss_cls.data[0], BATCH_SIZE)
                 
             if loss_bbox is not None:
-                #print(loss_bbox)
                 loss += 10 * loss_bbox
                 loss_bbox_avg.update(loss_bbox.data[0], BATCH_SIZE)
 
@@ -87,7 +89,7 @@ def main():
                         " loss_bbox:%.4e" % loss_bbox_avg.avg, " loss_angle:%.4e" % loss_angle_avg.avg, " accuracy:%.4e" % acc1.avg)
 
                 save_name = '_'.join([SUFFIX, "iter", str(i), '.model'])                
-                torch.save(o_model, os.path.join(SNAPSHOT_PATH, save_name))
+                torch.save(p_model, os.path.join(SNAPSHOT_PATH, save_name))
 
                 loss_avg = AverageMeter()
                 loss_cls_avg = AverageMeter()
@@ -96,7 +98,7 @@ def main():
                 acc1 = AverageMeter()
                  
 def get_dataset(files_vec=None, images_vec=None):
-    trainset = dataset.ImageSets(isTrain=True, imageSize=12, files_vec=files_vec, images_vec=images_vec)
+    trainset = dataset.ImageSets(isTrain=True, imageSize=24, files_vec=files_vec, images_vec=images_vec)
     train_loader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE, collate_fn=dataset.detection_collate, 
                                                 num_workers=NUM_WORKERS, pin_memory=True, drop_last=True)
     print("length of trainset:\t", len(trainset))
@@ -104,11 +106,11 @@ def get_dataset(files_vec=None, images_vec=None):
 
      
 def _model_init():
-    o_model = pcn.Onet()
-    #o_model.apply(weight_init)
-    o_model.cuda(DEVICE_IDS[0])
-    o_model.train()
-    return o_model
+    p_model = pcn.Pnet()
+    #p_model.apply(weight_init)
+    p_model.cuda(DEVICE_IDS[0])
+    p_model.train()
+    return p_model
 
 
 class AverageMeter(object):
@@ -129,18 +131,18 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 def accuracy(output, target):
-    #output = output[:,:,0,0] #---[batch_size, 1, 1, 1] ---> [batch_size, 1]
     index1 = torch.eq(target, 0)
     index2 = torch.eq(target, 1)
-    index = (index1 | index2).nonzero()[:, 0]
-
-    select_output = torch.index_select(output, 0, index)
-    select_target = torch.index_select(target, 0, index)
-    batch_size = select_output.size(0)
-    select_target = select_target.long()
-    select_output = (select_output >= 0.5).type_as(select_target)
-    correct = select_output.eq(select_target)
-    res = correct.sum() * 100.0 / batch_size
+    index = (index1 | index2).nonzero()[:,0]
+    
+    output = output[:,:,0,0] #---[batch_size, 1, 1, 1] ---> [batch_size, 1] 
+    output = torch.index_select(output, 0, index)
+    target = torch.index_select(target, 0, index)
+    batch_size = output.size(0)
+    target = target.long() 
+    output = (output >= 0.5).type_as(target)
+    correct = output.eq(target)
+    res = correct.sum() * 100.0 / batch_size 
     return res
 
 if __name__=="__main__":

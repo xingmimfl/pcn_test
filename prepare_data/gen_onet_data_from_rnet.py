@@ -18,11 +18,15 @@ from torch.autograd import Variable
 device_id = 1
 threshold = [0.2, 0.6, 0.6]
 pnet = pcn.Pnet()
-pnet.load_state_dict(torch.load("../pnet/pnet_190302_version2_iter_1239000_.pth"))
+pnet.load_state_dict(torch.load("../pnet/pnet_190310_iter_1238000_.pth"))
 pnet.eval()
 
+rnet = pcn.Rnet()
+rnet.load_state_dict(torch.load("../rnet/pnet_190312_iter_979000_.pth", map_location=lambda storage, loc: storage))
+rnet.eval()
 
-IMAGE_SIZE=24
+EPS = 0.01
+IMAGE_SIZE=48
 DEBUG = True
 if DEBUG:
     target_image_dir = "plot_images"
@@ -30,19 +34,19 @@ if DEBUG:
 
 anno_file = "wider_face_train.txt"
 im_dir = "/media/disk1/mengfanli/new-caffe-workplace/MTCNN_workplace/mtcnn-caffe_without_landmarks/prepare_data/WIDER_train/images"
-pos_save_dir = "../pnet/12/positive_hardmining"
-suspect_save_dir = "../pnet/12/suspect_hardmining"
-neg_save_dir = '../pnet/12/negative_hardmining'
-save_dir = "../pnet/12"
+pos_save_dir = "../onet/48/positive_rnet"
+suspect_save_dir = "../onet/48/suspect_rnet"
+neg_save_dir = '../onet/48/negative_rnet'
+save_dir = "../onet/48"
 
 ensure_directory_exists(save_dir)
 ensure_directory_exists(pos_save_dir)
 ensure_directory_exists(neg_save_dir)
 ensure_directory_exists(suspect_save_dir)
 
-f1 = open(os.path.join(save_dir, 'pos_hardmining_12.txt'), 'w')
-f2 = open(os.path.join(save_dir, 'neg_hardmining_12.txt'), 'w')
-f3 = open(os.path.join(save_dir, 'suspect_hardmining_12.txt'), 'w')
+f1 = open(os.path.join(save_dir, 'pos_rnet_48.txt'), 'w')
+f2 = open(os.path.join(save_dir, 'neg_rnet_48.txt'), 'w')
+f3 = open(os.path.join(save_dir, 'suspect_rnet_48.txt'), 'w')
 
 p_idx = 0 # positive
 n_idx = 0 # negative
@@ -50,12 +54,10 @@ d_idx = 0 # dont care
 idx = 0
 box_idx = 0
 
-angle_vecs = list(range(-180, 180))
-face_up = list(range(-65, 66))
-face_down = list(range(-180, -114)) + list(range(115, 181))
+angle_vecs = list(range(-45, 45))
 
 count = 0
-while count < 10:
+while count < 20:
     for a_line in open(anno_file):
         a_line = a_line.strip()
         array = a_line.split()
@@ -82,16 +84,34 @@ while count < 10:
         a_image, bboxes = rotate_images(a_image, bboxes, select_angle)
         height, width, channel = a_image.shape 
 
-        if select_angle in face_up: #----faceing up or down
-            face_up_down_label = 1
-        elif select_angle in face_down:
-            face_up_down_label = 0
-        else:
-            face_up_down_label = -1
-
         image_pad = a_image.copy()
-        rectangles = tools.detect_face_pnet(a_image, image_pad, pnet, 0.5, device_id)
-        rectangles = tools.NMS(rectangles, 0.5, 'iou')    
+        img180 = cv2.flip(image_pad, 0)
+        try:
+            rectangles = tools.detect_face_pnet(a_image, image_pad, pnet, 0.5, device_id)
+            num_of_rects = len(rectangles)
+            rnet_input = torch.zeros(num_of_rects, 3, 24, 24)            
+            for i in range(len(rectangles)):
+                a_rect = rectangles[i]
+                x1, y1, x2, y2 , conf, score_conf = a_rect
+                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+                if abs(score_conf) < EPS: #---人脸向上
+                    crop_image = a_image[y1:y2, x1:x2]
+                else:
+                    tmp = y2
+                    y2 = height - 1 - y1
+                    y1 = height - 1 - tmp
+                    crop_image = img180[y1:y2, x1:x2]                
+                crop_image = cv2.resize(crop_image, (24, 24)) / 255.0
+                crop_image = crop_image.transpose((2, 0, 1))
+                crop_image = torch.from_numpy(crop_image.copy())
+                rnet_input[i,:] = crop_image 
+
+            rnet_input = Variable(rnet_input)
+            fc5_2, fc6_2, bbox_reg = rnet(rnet_input)
+            rectangles = tools.filter_face_rnet(fc5_2, fc6_2, bbox_reg, rectangles, a_image.copy(), img180, threshold=0.5)
+        except:
+            print("wrong__wrong__")
+            continue
 
         for a_rect in rectangles:
             a_rect_x1, a_rect_y1, a_rect_x2, a_rect_y2 , confidence, _ =  a_rect
@@ -102,7 +122,7 @@ while count < 10:
 
             # ignore small faces
             # in case the ground truth boxes of small faces are not accurate
-            if max(a_rect_width, a_rect_height) < 40 or a_rect_x1 < 0 or a_rect_y1 < 0:
+            if max(a_rect_width, a_rect_height) < 12 or a_rect_x1 < 0 or a_rect_y1 < 0:
                 continue
 
 
@@ -111,7 +131,7 @@ while count < 10:
             x1, y1, x2, y2 = bboxes[max_id]
             pos_flag = int(pos_vec[max_id])
             if pos_flag ==1: 
-                face_up_down_label = -1 
+                continue 
             offset_x1 = (x1 - a_rect_x1) / float(a_rect_width)
             offset_y1 = (y1 - a_rect_y1) / float(a_rect_height)
             offset_x2 = (x2 - a_rect_x2) / float(a_rect_width)
@@ -122,27 +142,25 @@ while count < 10:
 
             if np.max(iou) >= 0.7:
                 save_file = os.path.join(pos_save_dir, "%s.jpg"%p_idx)
-                f1.write("12/positive_hardmining/%s.jpg"%p_idx + ' 1 %s %.4f %.4f %.4f %.4f\n'%(face_up_down_label, offset_x1, offset_y1, offset_x2, offset_y2))
-                print("12/positive_hardmining/%s.jpg"%p_idx + ' 1 %s %.4f %.4f %.4f %.4f'%(face_up_down_label, offset_x1, offset_y1, offset_x2, offset_y2))
-                print(" 12/positive_hardmining/%s.jpg"%p_idx + ' 1 %s %.4f %.4f %.4f %.4f'%(select_angle, offset_x1, offset_y1, offset_x2, offset_y2))
+                f1.write("48/positive_rnet/%s.jpg"%p_idx + ' 1 %s %.4f %.4f %.4f %.4f\n'%(select_angle, offset_x1, offset_y1, offset_x2, offset_y2))
+                print("48/positive_rnet/%s.jpg"%p_idx + ' 1 %s %.4f %.4f %.4f %.4f'%(select_angle, offset_x1, offset_y1, offset_x2, offset_y2))
                 cv2.imwrite(save_file, resized_im)
                 p_idx += 1
             elif np.max(iou) >=0.4:
                 if confidence >= 0.5:
                     save_file = os.path.join(suspect_save_dir, "%s.jpg"%d_idx)
-                    f3.write("12/suspect_hardmining/%s.jpg"%d_idx + ' -1 %s %.4f %.4f %.4f %.4f\n'%(face_up_down_label, offset_x1, offset_y1, offset_x2, offset_y2))
-                    print("12/suspect_hardmining/%s.jpg"%d_idx + ' -1 %s %.4f %.4f %.4f %.4f'%(face_up_down_label, offset_x1, offset_y1, offset_x2, offset_y2))
-                    print(" 12/suspect_hardmining/%s.jpg"%d_idx + ' -1 %s %.4f %.4f %.4f %.4f'%(select_angle, offset_x1, offset_y1, offset_x2, offset_y2))
+                    f3.write("48/suspect_rnet/%s.jpg"%d_idx + ' -1 %s %.4f %.4f %.4f %.4f\n'%(select_angle, offset_x1, offset_y1, offset_x2, offset_y2))
+                    print("48/suspect_rnet/%s.jpg"%d_idx + ' -1 %s %.4f %.4f %.4f %.4f'%(select_angle, offset_x1, offset_y1, offset_x2, offset_y2))
                     cv2.imwrite(save_file, resized_im)
                     d_idx += 1
             elif np.max(iou) < 0.3: #--negative samples
-                if confidence >= 0.8:
+                if confidence >= 0.5:
                     save_file = os.path.join(neg_save_dir, "%s.jpg"%n_idx)
-                    f2.write("12/negative_hardmining/%s.jpg"%n_idx + ' 0 -1 -1 -1 -1 -1\n')
+                    f2.write("48/negative_rnet/%s.jpg"%n_idx + ' 0 -1 -1 -1 -1 -1\n')
                     cv2.imwrite(save_file, resized_im)
                     n_idx += 1
-    count = count + 1
 
+    count = count + 1
 
 f1.close()
 f2.close()

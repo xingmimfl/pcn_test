@@ -43,7 +43,7 @@ idx = 0
 box_idx = 0
 
 angle_vecs = list(range(-90, 91))
-face_0 = list(range(-90, -60))
+face_0 = list(range(-90, -59))
 face_1 = list(range(-30, 31))
 face_2 = list(range(60, 91))
 

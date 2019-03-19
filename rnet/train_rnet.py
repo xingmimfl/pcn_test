@@ -16,8 +16,7 @@ def main():
     with torch.cuda.device(DEVICE_IDS[0]):
         r_model = _model_init()
         #----data loader----
-        #train_loader = get_dataset(files_vec=['pos_24.txt', 'neg_24.txt', 'suspect_24.txt'])
-        train_loader = get_dataset(files_vec=['pos_24.txt', 'neg_24.txt', 'suspect_24.txt', 'pos_pnet_24.txt', 'suspect_pnet_24.txt','neg_pnet_24.txt'])
+        train_loader = get_dataset(files_vec=['pos_24.txt', 'neg_24.txt', 'suspect_24.txt'])
         train_iter = iter(train_loader)
         #----data iter-----
         check_dir(SNAPSHOT_PATH)
@@ -68,7 +67,7 @@ def main():
                 loss_cls_avg.update(loss_cls.data[0], BATCH_SIZE)
                 
             if loss_bbox is not None:
-                loss += loss_bbox
+                loss += 10 * loss_bbox
                 loss_bbox_avg.update(loss_bbox.data[0], BATCH_SIZE)
 
             if loss_angle is not None:
@@ -78,7 +77,7 @@ def main():
             prec1 =  accuracy(fc5.data, _labels) 
             acc1.update(prec1)
 
-            angle_prec = angle_accuracy(fc5.data, _angle_labels)
+            angle_prec = angle_accuracy(fc6.data, _angle_labels)
             angle_acc.update(angle_prec) 
             
             loss_avg.update(loss.data[0], BATCH_SIZE)
@@ -149,9 +148,20 @@ def accuracy(output, target):
     return res
 
 def angle_accuracy(output, labels):
-    batch_size = labels.size(0)
-    output = F.softmax(output)
-    correct = output.eq(output) 
+    index = torch.eq(labels, -1)
+    index = ~index
+    index = index.nonzero()[:, 0] 
+
+    select_output = torch.index_select(output, 0, index)
+    select_labels = torch.index_select(labels, 0, index)
+    batch_size = select_labels.size(0)
+    _, angle_max_index = torch.max(select_output, dim=1)
+    select_labels = select_labels.squeeze().long() 
+    #print(select_labels)
+    #print("~~~~~~~~~~~")
+    #print(angle_max_index)
+    #print("==========")
+    correct = angle_max_index.eq(select_labels) 
     res = correct.sum() * 100.0 / batch_size
     return res
 

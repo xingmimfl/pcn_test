@@ -69,7 +69,7 @@ for a_line in open(anno_file):
     #---------------------------------- 
     
     neg_num = 0
-    while neg_num < 100:
+    while neg_num < 50:
         a_image_copy = a_image.copy()
         bboxes_copy = bboxes.copy()
         select_angle = np.random.choice(angle_vecs)
@@ -122,11 +122,11 @@ for a_line in open(anno_file):
 
         # ignore small faces
         # in case the ground truth boxes of small faces are not accurate
-        if max(w, h) < 40 or x1 < 0 or y1 < 0:
+        if max(w, h) < 12 or x1 < 0 or y1 < 0:
             continue
 
         # generate positive examples and suspect faces
-        for i in range(100):
+        for i in range(20):
             a_image_copy = a_image.copy()
             box_copy = box.copy()
             select_angle = np.random.choice(angle_vecs)

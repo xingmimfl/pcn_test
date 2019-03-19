@@ -13,16 +13,20 @@ EPS = 0.001
 
 if __name__=="__main__":
     #image_name = "images/25.jpg"
+    #image_name = "images/yueyu.jpg"
+    image_name = "images/qingxie.jpg"
+    #image_name = "images/9.jpg"
+    #image_name = "images/17.jpg"
+    #image_name = "images/24.jpg"
     #image_name = "images/5.jpg"
-    #image_name = "images/juzhao3.jpeg"
-    image_name = "images/9.jpg"
-    #image_name = "images/30.jpg"
+    #image_name = "images/7.jpg"
+    #image_name = "images/daozhi.jpg"
     pnet = pcn.Pnet()
-    pnet.load_state_dict(torch.load("pnet/pnet_190219_iter_1999000_.pth", map_location=lambda storage, loc: storage))
+    pnet.load_state_dict(torch.load("pnet/pnet_190310_iter_1238000_.pth", map_location=lambda storage, loc: storage))
     pnet.eval()
 
     rnet = pcn.Rnet()
-    rnet.load_state_dict(torch.load("rnet/pnet_190220_iter_1499000_.pth", map_location=lambda storage, loc: storage))
+    rnet.load_state_dict(torch.load("rnet/pnet_190312_iter_979000_.pth", map_location=lambda storage, loc: storage))
     rnet.eval()
 
     onet = pcn.Onet()
@@ -67,9 +71,7 @@ if __name__=="__main__":
         if abs(score_conf) < EPS: #---人脸向上
             crop_image = img[y1:y2, x1:x2]
         else:
-            tmp = y2
-            y2 = img_height - 1 - y1
-            y1 = img_height - 1 - tmp
+            y1, y2 = img_height - 1 - y2, img_height - 1 - y1
             crop_image = img180[y1:y2, x1:x2]
         cv2.imwrite("rnet_input_"+str(count) + "_" + str(score_conf) + ".jpg", crop_image) 
         count += 1
@@ -81,7 +83,7 @@ if __name__=="__main__":
     rnet_input = Variable(rnet_input)
     fc5_2, fc6_2, bbox_reg = rnet(rnet_input)
     rectangles = tools.filter_face_rnet(fc5_2, fc6_2, bbox_reg, rectangles, img, img180, threshold=0.5)
-    
+    print(rectangles) 
     for a_rectangle in rectangles:
         x1, y1, x2, y2, cls_score, rotate_score = a_rectangle
         x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)

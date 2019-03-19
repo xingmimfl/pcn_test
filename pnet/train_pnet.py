@@ -15,10 +15,10 @@ def main():
     with torch.cuda.device(DEVICE_IDS[0]):
         p_model = _model_init()
         #----data loader----
-        train_loader = get_dataset(files_vec=['pos_12.txt', 'pos_hardmining_12.txt',
-            'neg_12.txt', 'neg_hardmining_12.txt',
-            'suspect_12.txt', 'suspect_hardmining_12.txt'])
-        #train_loader = get_dataset(files_vec=['pos_12.txt',  'neg_12.txt', 'suspect_12.txt'])
+        #train_loader = get_dataset(files_vec=['pos_12.txt', 'pos_hardmining_12.txt',
+        #    'neg_12.txt', 'neg_hardmining_12.txt',
+        #    'suspect_12.txt', 'suspect_hardmining_12.txt'])
+        train_loader = get_dataset(files_vec=['pos_12.txt',  'neg_12.txt', 'suspect_12.txt'])
         train_iter = iter(train_loader)
         #----data iter-----
         check_dir(SNAPSHOT_PATH)

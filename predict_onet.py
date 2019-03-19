@@ -13,7 +13,7 @@ threshold = [0.6, 0.6, 0.7]
 
 if __name__=="__main__":
     #image_name = "images/yueyu.jpg"
-    image_name = "onet_input_0_-90.0.jpg"
+    image_name = "onet_input_4_180.0.jpg"
     #image_name = "images/20.jpg"
     onet = pcn.Onet()
     #onet.load_state_dict(torch.load("onet/onet_190214_iter_1449000_.pth"))
